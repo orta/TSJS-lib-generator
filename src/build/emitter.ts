@@ -327,7 +327,8 @@ export function emitWebIdl(
     if (obj.overrideType) {
       return obj.nullable ? makeNullable(obj.overrideType) : obj.overrideType;
     }
-    if (!obj.type) throw new Error("Missing type " + JSON.stringify(obj));
+    if (!obj.type)
+      throw new Error("Missing 'type' field in " + JSON.stringify(obj));
     const type = convertDomTypeToTsTypeWorker(obj);
     return obj.nullable ? makeNullable(type) : type;
   }
@@ -403,6 +404,18 @@ export function emitWebIdl(
     }
     if (baseTypeConversionMap.has(objDomType)) {
       return baseTypeConversionMap.get(objDomType)!;
+    }
+
+    // There is only one place we need to use EventListener (in the type
+    // alias at the bottom of each dts file) but it cannot be transformed by
+    // this function to EventListenerOrEventListenerObject in order to not
+    // be a circular reference.
+    if (objDomType === "_EventListener") {
+      return "EventListener";
+    }
+
+    if (objDomType === "EventListener") {
+      return "EventListenerOrEventListenerObject";
     }
     // Name of an interface / enum / dict. Just return itself
     if (
@@ -1037,7 +1050,7 @@ export function emitWebIdl(
       if (tryEmitTypedEventHandlerForInterface(addOrRemove, optionsType)) {
         // only emit the string event handler if we just emitted a typed handler
         printer.printLine(
-          `${fPrefix}${addOrRemove}EventListener(type: string, listener: EventListener, options?: boolean | ${optionsType}): void;`
+          `${fPrefix}${addOrRemove}EventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | ${optionsType}): void;`
         );
       }
     }
