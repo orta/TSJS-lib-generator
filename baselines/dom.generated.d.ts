@@ -6305,6 +6305,14 @@ declare var HTMLDetailsElement: {
     new(): HTMLDetailsElement;
 };
 
+/** @deprecated - this is not available in most browsers */
+interface HTMLDialogElement extends HTMLElement {
+    addEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLDialogElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+    addEventListener(type: string, listener: EventListener, options?: boolean | AddEventListenerOptions): void;
+    removeEventListener<K extends keyof HTMLElementEventMap>(type: K, listener: (this: HTMLDialogElement, ev: HTMLElementEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+    removeEventListener(type: string, listener: EventListener, options?: boolean | EventListenerOptions): void;
+}
+
 /** @deprecated */
 interface HTMLDirectoryElement extends HTMLElement {
     /** @deprecated */
@@ -6338,6 +6346,14 @@ declare var HTMLDivElement: {
     prototype: HTMLDivElement;
     new(): HTMLDivElement;
 };
+
+/** @deprecated - use Document */
+interface HTMLDocument extends Document {
+    addEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: HTMLDocument, ev: DocumentEventMap[K]) => any, options?: boolean | AddEventListenerOptions): void;
+    addEventListener(type: string, listener: EventListener, options?: boolean | AddEventListenerOptions): void;
+    removeEventListener<K extends keyof DocumentEventMap>(type: K, listener: (this: HTMLDocument, ev: DocumentEventMap[K]) => any, options?: boolean | EventListenerOptions): void;
+    removeEventListener(type: string, listener: EventListener, options?: boolean | EventListenerOptions): void;
+}
 
 interface HTMLElementEventMap extends ElementEventMap, DocumentAndElementEventHandlersEventMap, GlobalEventHandlersEventMap {
 }
@@ -18014,6 +18030,7 @@ interface HTMLElementTagNameMap {
     "del": HTMLModElement;
     "details": HTMLDetailsElement;
     "dfn": HTMLElement;
+    "dialog": HTMLDialogElement;
     "dir": HTMLDirectoryElement;
     "div": HTMLDivElement;
     "dl": HTMLDListElement;
