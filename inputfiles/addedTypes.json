@@ -708,6 +708,28 @@
                     ]
                 }
             },
+            "StyleMedia": {
+                "name": "ClientRect",
+                "exposed": "Window",
+                "properties": {
+                    "property": {
+                        "type": {
+                            "name": "type",
+                            "overrideType": "string"
+                        }
+                    }
+                },
+                "methods": {
+                    "method": {
+                        "matchMedium": {
+                            "name": "matchMedium",
+                            "overrideSignatures": [
+                                "matchMedium(mediaquery: string): boolean"
+                            ]
+                        }
+                    }
+                }
+            },
             "SVGElement": {
                 "implements": [
                     "GlobalEventHandlers",

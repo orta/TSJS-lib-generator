@@ -3505,6 +3505,16 @@ declare var ClientRect: {
     new(): ClientRect;
 };
 
+interface ClientRect {
+    type: string;
+    matchMedium(mediaquery: string): boolean;
+}
+
+declare var ClientRect: {
+    prototype: ClientRect;
+    new(): ClientRect;
+};
+
 interface Clipboard extends EventTarget {
     read(): Promise<ClipboardItems>;
     readText(): Promise<string>;
