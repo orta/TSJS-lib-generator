@@ -3491,6 +3491,20 @@ interface ChildNode {
     replaceWith(...nodes: (Node | string)[]): void;
 }
 
+interface ClientRect {
+    bottom: number;
+    readonly height: number;
+    left: number;
+    right: number;
+    top: number;
+    readonly width: number;
+}
+
+declare var ClientRect: {
+    prototype: ClientRect;
+    new(): ClientRect;
+};
+
 interface Clipboard extends EventTarget {
     read(): Promise<ClipboardItems>;
     readText(): Promise<string>;

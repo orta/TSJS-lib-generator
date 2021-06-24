@@ -319,6 +319,40 @@
                     }
                 }
             },
+            "ClientRect": {
+                "name": "ClientRect",
+                "exposed": "Window",
+                "properties": {
+                    "property": {
+                        "bottom": {
+                            "name": "bottom",
+                            "overrideType": "number"
+                        },
+                        "top": {
+                            "name": "top",
+                            "overrideType": "number"
+                        },
+                        "left": {
+                            "name": "left",
+                            "overrideType": "number"
+                        },
+                        "right": {
+                            "name": "right",
+                            "overrideType": "number"
+                        },
+                        "height": {
+                            "name": "height",
+                            "overrideType": "number",
+                            "readonly": true
+                        },
+                        "width": {
+                            "name": "width",
+                            "overrideType": "number",
+                            "readonly": true
+                        }
+                    }
+                }
+            },
             "Window": {
                 "name": "Window",
                 "methods": {
