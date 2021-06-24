@@ -306,7 +306,7 @@
                 "name": "OffscreenCanvas",
                 "noInterfaceObject": true,
                 "comment": "@deprecated - this is not available in most browsers",
-                "exposed": "Worker"
+                "exposed": "Window Worker"
             },
             "HTMLDocument": {
                 "name": "HTMLDocument",
