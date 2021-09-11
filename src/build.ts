@@ -32,6 +32,7 @@ interface EmitOptions {
   global: string[];
   name: string;
   outputFolder: URL;
+  splitTypes?: true;
 }
 
 async function emitFlavor(
@@ -42,13 +43,20 @@ async function emitFlavor(
   const exposed = getExposedTypes(webidl, options.global, forceKnownTypes);
   mergeNamesakes(exposed);
 
-  const result = emitWebIdl(exposed, options.global[0], false);
-  await fs.writeFile(
-    new URL(`${options.name}.generated.d.ts`, options.outputFolder),
-    result
-  );
+  const mainBuilds: ["all" | "types" | "values", string][] = [];
+  if (options.splitTypes) {
+    mainBuilds.push(["types", `${options.name}.generated.types.d.ts`]);
+    mainBuilds.push(["values", `${options.name}.generated.globals.d.ts`]);
+  } else {
+    mainBuilds.push(["all", `${options.name}.generated.d.ts`]);
+  }
 
-  const iterators = emitWebIdl(exposed, options.global[0], true);
+  for (const builds of mainBuilds) {
+    const result = emitWebIdl(exposed, options.global[0], false, builds[0]);
+    await fs.writeFile(new URL(builds[1], options.outputFolder), result);
+  }
+
+  const iterators = emitWebIdl(exposed, options.global[0], true, "all");
   await fs.writeFile(
     new URL(`${options.name}.iterable.generated.d.ts`, options.outputFolder),
     iterators
@@ -249,6 +257,7 @@ async function emitDom() {
     name: "dom",
     global: ["Window"],
     outputFolder,
+    splitTypes: true,
   });
   emitFlavor(webidl, new Set(knownTypes.Worker), {
     name: "webworker",

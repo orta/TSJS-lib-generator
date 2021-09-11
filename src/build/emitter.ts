@@ -135,8 +135,10 @@ function isEventHandler(p: Browser.Property) {
 export function emitWebIdl(
   webidl: Browser.WebIdl,
   global: string,
-  iterator: boolean
+  iterator: boolean,
+  emitObjects: "all" | "types" | "values"
 ): string {
+  emitObjects;
   // Global print target
   const printer = createTextWriter("\n");
 
