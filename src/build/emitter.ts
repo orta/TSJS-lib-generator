@@ -128,6 +128,16 @@ function createTextWriter(newLine: string) {
   };
 }
 
+function createNOOPTextWriter(
+  newLine: string
+): ReturnType<typeof createTextWriter> {
+  const realWriter = createTextWriter(newLine);
+  realWriter.getResult = function () {
+    return "";
+  };
+  return realWriter;
+}
+
 function isEventHandler(p: Browser.Property) {
   return typeof p.eventHandler === "string";
 }
@@ -140,7 +150,7 @@ export function emitWebIdl(
 ): string {
   emitObjects;
   // Global print target
-  const printer = createTextWriter("\n");
+  const tPrinter = createTextWriter("\n");
 
   const polluter = getElements(webidl.interfaces, "interface").find(
     (i) => !!i.global
@@ -446,8 +456,8 @@ export function emitWebIdl(
   }
 
   function emitConstant(c: Browser.Constant) {
-    emitComments(c, printer.printLine);
-    printer.printLine(`readonly ${c.name}: ${convertDomTypeToTsType(c)};`);
+    emitComments(c, tPrinter.printLine);
+    tPrinter.printLine(`readonly ${c.name}: ${convertDomTypeToTsType(c)};`);
   }
 
   function emitConstants(i: Browser.Interface) {
@@ -505,14 +515,14 @@ export function emitWebIdl(
         "string | ElementCreationOptions",
       ])
     ) {
-      printer.printLine(
+      tPrinter.printLine(
         "createElement<K extends keyof HTMLElementTagNameMap>(tagName: K, options?: ElementCreationOptions): HTMLElementTagNameMap[K];"
       );
-      printer.printLine("/** @deprecated */");
-      printer.printLine(
+      tPrinter.printLine("/** @deprecated */");
+      tPrinter.printLine(
         "createElement<K extends keyof HTMLElementDeprecatedTagNameMap>(tagName: K, options?: ElementCreationOptions): HTMLElementDeprecatedTagNameMap[K];"
       );
-      printer.printLine(
+      tPrinter.printLine(
         "createElement(tagName: string, options?: ElementCreationOptions): HTMLElement;"
       );
     }
@@ -528,17 +538,17 @@ export function emitWebIdl(
         "string"
       )
     ) {
-      printer.printLine(
+      tPrinter.printLine(
         `getElementsByTagName<K extends keyof HTMLElementTagNameMap>(${
           m.signature[0].param![0].name
         }: K): HTMLCollectionOf<HTMLElementTagNameMap[K]>;`
       );
-      printer.printLine(
+      tPrinter.printLine(
         `getElementsByTagName<K extends keyof SVGElementTagNameMap>(${
           m.signature[0].param![0].name
         }: K): HTMLCollectionOf<SVGElementTagNameMap[K]>;`
       );
-      printer.printLine(
+      tPrinter.printLine(
         `getElementsByTagName(${
           m.signature[0].param![0].name
         }: string): HTMLCollectionOf<Element>;`
@@ -551,13 +561,13 @@ export function emitWebIdl(
     if (
       matchParamMethodSignature(m, "querySelector", "Element | null", "string")
     ) {
-      printer.printLine(
+      tPrinter.printLine(
         "querySelector<K extends keyof HTMLElementTagNameMap>(selectors: K): HTMLElementTagNameMap[K] | null;"
       );
-      printer.printLine(
+      tPrinter.printLine(
         "querySelector<K extends keyof SVGElementTagNameMap>(selectors: K): SVGElementTagNameMap[K] | null;"
       );
-      printer.printLine(
+      tPrinter.printLine(
         "querySelector<E extends Element = Element>(selectors: string): E | null;"
       );
     }
@@ -568,65 +578,65 @@ export function emitWebIdl(
     if (
       matchParamMethodSignature(m, "querySelectorAll", "NodeList", "string")
     ) {
-      printer.printLine(
+      tPrinter.printLine(
         "querySelectorAll<K extends keyof HTMLElementTagNameMap>(selectors: K): NodeListOf<HTMLElementTagNameMap[K]>;"
       );
-      printer.printLine(
+      tPrinter.printLine(
         "querySelectorAll<K extends keyof SVGElementTagNameMap>(selectors: K): NodeListOf<SVGElementTagNameMap[K]>;"
       );
-      printer.printLine(
+      tPrinter.printLine(
         "querySelectorAll<E extends Element = Element>(selectors: string): NodeListOf<E>;"
       );
     }
   }
 
   function emitHTMLElementTagNameMap() {
-    printer.printLine("interface HTMLElementTagNameMap {");
-    printer.increaseIndent();
+    tPrinter.printLine("interface HTMLElementTagNameMap {");
+    tPrinter.increaseIndent();
     for (const [e, value] of Object.entries(
       tagNameToEleName.htmlResult
     ).sort()) {
-      printer.printLine(`"${e.toLowerCase()}": ${value};`);
+      tPrinter.printLine(`"${e.toLowerCase()}": ${value};`);
     }
-    printer.decreaseIndent();
-    printer.printLine("}");
-    printer.printLine("");
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("}");
+    tPrinter.printLine("");
   }
 
   function emitHTMLElementDeprecatedTagNameMap() {
-    printer.printLine("interface HTMLElementDeprecatedTagNameMap {");
-    printer.increaseIndent();
+    tPrinter.printLine("interface HTMLElementDeprecatedTagNameMap {");
+    tPrinter.increaseIndent();
     for (const [e, value] of Object.entries(
       tagNameToEleName.htmlDeprecatedResult
     ).sort()) {
-      printer.printLine(`"${e.toLowerCase()}": ${value};`);
+      tPrinter.printLine(`"${e.toLowerCase()}": ${value};`);
     }
-    printer.decreaseIndent();
-    printer.printLine("}");
-    printer.printLine("");
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("}");
+    tPrinter.printLine("");
   }
 
   function emitSVGElementTagNameMap() {
-    printer.printLine("interface SVGElementTagNameMap {");
-    printer.increaseIndent();
+    tPrinter.printLine("interface SVGElementTagNameMap {");
+    tPrinter.increaseIndent();
     for (const [e, value] of Object.entries(
       tagNameToEleName.svgResult
     ).sort()) {
-      printer.printLine(`"${e}": ${value};`);
+      tPrinter.printLine(`"${e}": ${value};`);
     }
-    printer.decreaseIndent();
-    printer.printLine("}");
-    printer.printLine("");
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("}");
+    tPrinter.printLine("");
   }
 
   function emitElementTagNameMap() {
-    printer.printLine(
+    tPrinter.printLine(
       "/** @deprecated Directly use HTMLElementTagNameMap or SVGElementTagNameMap as appropriate, instead. */"
     );
-    printer.printLine(
+    tPrinter.printLine(
       "type ElementTagNameMap = HTMLElementTagNameMap & Pick<SVGElementTagNameMap, Exclude<keyof SVGElementTagNameMap, keyof HTMLElementTagNameMap>>;"
     );
-    printer.printLine("");
+    tPrinter.printLine("");
   }
 
   /// Emit overloads for the createEvent method
@@ -641,12 +651,12 @@ export function emitWebIdl(
         "UIEvent",
       ];
       for (const x of distinctETypeList) {
-        printer.printLine(`createEvent(eventInterface: "${x}"): ${x};`);
+        tPrinter.printLine(`createEvent(eventInterface: "${x}"): ${x};`);
         if (hasPlurals.includes(x)) {
-          printer.printLine(`createEvent(eventInterface: "${x}s"): ${x};`);
+          tPrinter.printLine(`createEvent(eventInterface: "${x}s"): ${x};`);
         }
       }
-      printer.printLine("createEvent(eventInterface: string): Event;");
+      tPrinter.printLine("createEvent(eventInterface: string): Event;");
     }
   }
 
@@ -703,32 +713,32 @@ export function emitWebIdl(
     const returnType = overload.type
       ? convertDomTypeToTsReturnType(overload)
       : "void";
-    printer.printLine(
+    tPrinter.printLine(
       `type ${i.name} = ((${paramsString}) => ${returnType}) | { ${m.name}(${paramsString}): ${returnType}; };`
     );
-    printer.printLine("");
+    tPrinter.printLine("");
 
     if (!mapToArray(i.constants?.constant ?? {}).length) {
       return;
     }
 
-    printer.printLine(`declare var ${i.name}: {`);
-    printer.increaseIndent();
+    tPrinter.printLine(`declare var ${i.name}: {`);
+    tPrinter.increaseIndent();
     emitConstants(i);
-    printer.decreaseIndent();
-    printer.printLine("};");
-    printer.printLine("");
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("};");
+    tPrinter.printLine("");
   }
 
   function emitCallBackFunction(cb: Browser.CallbackFunction) {
-    printer.printLine(
+    tPrinter.printLine(
       `interface ${getNameWithTypeParameter(cb.typeParameters, cb.name)} {`
     );
-    printer.increaseIndent();
-    emitSignatures(cb, "", "", printer.printLine, true);
-    printer.decreaseIndent();
-    printer.printLine("}");
-    printer.printLine("");
+    tPrinter.increaseIndent();
+    emitSignatures(cb, "", "", tPrinter.printLine, true);
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("}");
+    tPrinter.printLine("");
   }
 
   function emitCallBackFunctions() {
@@ -739,7 +749,7 @@ export function emitWebIdl(
 
   function emitEnum(e: Browser.Enum) {
     const values = e.value.slice().sort();
-    printer.printLine(
+    tPrinter.printLine(
       `type ${e.name} = ${values.map((v) => `"${v}"`).join(" | ")};`
     );
   }
@@ -777,7 +787,7 @@ export function emitWebIdl(
     emitScope: EmitScope,
     p: Browser.Property
   ) {
-    emitComments(p, printer.printLine);
+    emitComments(p, tPrinter.printLine);
 
     // Treat window.name specially because of
     //   - https://github.com/Microsoft/TypeScript/issues/9850
@@ -787,8 +797,8 @@ export function emitWebIdl(
       i.name === "Window" &&
       emitScope === EmitScope.All
     ) {
-      printer.printLine("/** @deprecated */");
-      printer.printLine("declare const name: void;");
+      tPrinter.printLine("/** @deprecated */");
+      tPrinter.printLine("declare const name: void;");
     } else {
       let pType: string;
       if (!p.overrideType && isEventHandler(p)) {
@@ -810,7 +820,7 @@ export function emitWebIdl(
       }
       const optionalModifier = !p.optional || prefix ? "" : "?";
       if (!prefix && !p.readonly && p.putForwards) {
-        printer.printLine(`get ${p.name}${optionalModifier}(): ${pType};`);
+        tPrinter.printLine(`get ${p.name}${optionalModifier}(): ${pType};`);
 
         const forwardingProperty =
           allInterfacesMap[pType].properties?.property[p.putForwards];
@@ -820,19 +830,19 @@ export function emitWebIdl(
         const setterType = `${convertDomTypeToTsType(
           forwardingProperty
         )} | ${pType}`;
-        printer.printLine(
+        tPrinter.printLine(
           `set ${p.name}${optionalModifier}(${p.putForwards}: ${setterType});`
         );
       } else {
         const readOnlyModifier = p.readonly && prefix === "" ? "readonly " : "";
-        printer.printLine(
+        tPrinter.printLine(
           `${prefix}${readOnlyModifier}${p.name}${optionalModifier}: ${pType};`
         );
       }
     }
 
     if (p.stringifier) {
-      printer.printLine("toString(): string;");
+      tPrinter.printLine("toString(): string;");
     }
   }
 
@@ -881,9 +891,9 @@ export function emitWebIdl(
   ) {
     function printLine(content: string) {
       if (m.name && conflictedMembers.has(m.name)) {
-        printer.printLineToStack(content);
+        tPrinter.printLineToStack(content);
       } else {
-        printer.printLine(content);
+        tPrinter.printLine(content);
       }
     }
 
@@ -985,14 +995,14 @@ export function emitWebIdl(
     if (i.anonymousMethods) {
       const stringifier = i.anonymousMethods.method.find((m) => m.stringifier);
       if (stringifier) {
-        printer.printLine("toString(): string;");
+        tPrinter.printLine("toString(): string;");
       }
     }
 
     // The window interface inherited some methods from "Object",
     // which need to explicitly exposed
     if (i.name === "Window" && prefix === "declare function ") {
-      printer.printLine("declare function toString(): string;");
+      tPrinter.printLine("declare function toString(): string;");
     }
   }
 
@@ -1012,7 +1022,7 @@ export function emitWebIdl(
     const name = i.typeParameters
       ? `${i.name}<${i.typeParameters!.map((p) => p.name).join(", ")}>`
       : i.name;
-    printer.printLine(
+    tPrinter.printLine(
       `forEach(callbackfn: (value: ${value}, key: ${key}, parent: ${name}) => void, thisArg?: any): void;`
     );
   }
@@ -1059,7 +1069,7 @@ export function emitWebIdl(
           : "EventListenerOptions";
       if (tryEmitTypedEventHandlerForInterface(addOrRemove, optionsType)) {
         // only emit the string event handler if we just emitted a typed handler
-        printer.printLine(
+        tPrinter.printLine(
           `${fPrefix}${addOrRemove}EventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | ${optionsType}): void;`
         );
       }
@@ -1073,7 +1083,7 @@ export function emitWebIdl(
       iParent: Browser.Interface,
       optionsType: string
     ) {
-      printer.printLine(
+      tPrinter.printLine(
         `${prefix}${addOrRemove}EventListener<K extends keyof ${
           iParent.name
         }EventMap>(type: K, listener: (this: ${nameWithForwardedTypes(
@@ -1111,24 +1121,24 @@ export function emitWebIdl(
 
     // Emit constructor signature
     if (constructor) {
-      emitComments(constructor, printer.print);
-      emitSignatures(constructor, "", "new", printer.printLine);
+      emitComments(constructor, tPrinter.print);
+      emitSignatures(constructor, "", "new", tPrinter.printLine);
     } else {
-      printer.printLine(`new(): ${i.name};`);
+      tPrinter.printLine(`new(): ${i.name};`);
     }
   }
 
   function emitConstructor(i: Browser.Interface, prefix = "") {
     if (i.deprecated) {
-      printer.printLine(`/** @deprecated */`);
+      tPrinter.printLine(`/** @deprecated */`);
     }
-    printer.printLine(`${prefix}var ${i.name}: {`);
-    printer.increaseIndent();
+    tPrinter.printLine(`${prefix}var ${i.name}: {`);
+    tPrinter.increaseIndent();
 
     // TODO: To be more accurate, this should be `readonly prototype`
     // however, TypeScript's ability to keep track of readonly-ness can
     // sometimes fail in un-expected ways, making this not backwards compatible.
-    printer.printLine(`prototype: ${i.name};`);
+    tPrinter.printLine(`prototype: ${i.name};`);
     emitConstructorSignature(i);
     emitConstants(i);
     if (iNameToConstParents[i.name]?.length) {
@@ -1138,15 +1148,15 @@ export function emitWebIdl(
     }
     emitMembers(/*prefix*/ "", EmitScope.StaticOnly, i);
 
-    printer.decreaseIndent();
-    printer.printLine("};");
-    printer.printLine("");
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("};");
+    tPrinter.printLine("");
 
     if (global === "Window" && i.legacyWindowAlias) {
       for (const alias of i.legacyWindowAlias!) {
-        printer.printLine(`type ${alias} = ${i.name};`);
-        printer.printLine(`declare var ${alias}: typeof ${i.name};`);
-        printer.printLine("");
+        tPrinter.printLine(`type ${alias} = ${i.name};`);
+        tPrinter.printLine(`declare var ${alias}: typeof ${i.name};`);
+        tPrinter.printLine("");
       }
     }
   }
@@ -1154,15 +1164,15 @@ export function emitWebIdl(
   function emitNamedConstructor(i: Browser.Interface) {
     const nc = i.namedConstructor;
     if (nc) {
-      printer.printLine(`declare var ${nc.name}: {`);
-      printer.increaseIndent();
+      tPrinter.printLine(`declare var ${nc.name}: {`);
+      tPrinter.increaseIndent();
       nc.signature.forEach((s) =>
-        printer.printLine(
+        tPrinter.printLine(
           `new(${s.param ? paramsToString(s.param) : ""}): ${i.name};`
         )
       );
-      printer.decreaseIndent();
-      printer.printLine(`};`);
+      tPrinter.decreaseIndent();
+      tPrinter.printLine(`};`);
     }
   }
 
@@ -1181,7 +1191,7 @@ export function emitWebIdl(
     const processedIName = processIName(i.name);
 
     if (processedIName !== i.name) {
-      printer.printLineToStack(
+      tPrinter.printLineToStack(
         `interface ${getNameWithTypeParameter(
           i.typeParameters,
           i.name
@@ -1189,9 +1199,9 @@ export function emitWebIdl(
       );
     }
 
-    emitComments(i, printer.printLine);
+    emitComments(i, tPrinter.printLine);
 
-    printer.print(
+    tPrinter.print(
       `interface ${getNameWithTypeParameter(i.typeParameters, processedIName)}`
     );
 
@@ -1201,10 +1211,10 @@ export function emitWebIdl(
       .map(processIName);
 
     if (finalExtends.length) {
-      printer.print(` extends ${assertUnique(finalExtends).join(", ")}`);
+      tPrinter.print(` extends ${assertUnique(finalExtends).join(", ")}`);
     }
-    printer.print(" {");
-    printer.endLine();
+    tPrinter.print(" {");
+    tPrinter.endLine();
   }
 
   /// To decide if a given method is an indexer and should be emitted
@@ -1277,7 +1287,7 @@ export function emitWebIdl(
 
   function emitIndexers(emitScope: EmitScope, i: Browser.Interface) {
     if (i.overrideIndexSignatures) {
-      i.overrideIndexSignatures!.forEach((s) => printer.printLine(`${s};`));
+      i.overrideIndexSignatures!.forEach((s) => tPrinter.printLine(`${s};`));
     } else {
       // The indices could be within either Methods or Anonymous Methods
       mapToArray<Browser.AnonymousMethod>(i.methods?.method)
@@ -1288,7 +1298,7 @@ export function emitWebIdl(
         .forEach((m) => {
           const indexer = m.signature?.[0].param?.[0];
           if (indexer) {
-            printer.printLine(
+            tPrinter.printLine(
               `[${indexer.name}: ${convertDomTypeToTsType(
                 indexer
               )}]: ${convertDomTypeToTsType({
@@ -1305,7 +1315,7 @@ export function emitWebIdl(
 
   function emitInterfaceEventMap(i: Browser.Interface) {
     function emitInterfaceEventMapEntry(eventName: string) {
-      printer.printLine(
+      tPrinter.printLine(
         `"${eventName}": ${getEventTypeInInterface(eventName, i)};`
       );
     }
@@ -1314,41 +1324,41 @@ export function emitWebIdl(
     const ehParentCount = iNameToEhParents[i.name]?.length;
 
     if (hasEventHandlers || ehParentCount > 1) {
-      printer.print(`interface ${i.name}EventMap`);
+      tPrinter.print(`interface ${i.name}EventMap`);
       if (ehParentCount) {
         const extend = iNameToEhParents[i.name].map((i) => i.name + "EventMap");
-        printer.print(` extends ${assertUnique(extend).join(", ")}`);
+        tPrinter.print(` extends ${assertUnique(extend).join(", ")}`);
       }
-      printer.print(" {");
-      printer.endLine();
-      printer.increaseIndent();
+      tPrinter.print(" {");
+      tPrinter.endLine();
+      tPrinter.increaseIndent();
       iNameToEhList[i.name].forEach(emitInterfaceEventMapEntry);
-      printer.decreaseIndent();
-      printer.printLine("}");
-      printer.printLine("");
+      tPrinter.decreaseIndent();
+      tPrinter.printLine("}");
+      tPrinter.printLine("");
     }
   }
 
   function emitInterface(i: Browser.Interface) {
-    printer.clearStack();
+    tPrinter.clearStack();
     emitInterfaceEventMap(i);
 
     emitInterfaceDeclaration(i);
-    printer.increaseIndent();
+    tPrinter.increaseIndent();
 
     emitMembers(/*prefix*/ "", EmitScope.InstanceOnly, i);
     emitConstants(i);
     emitEventHandlers(/*prefix*/ "", i);
     emitIndexers(EmitScope.InstanceOnly, i);
 
-    printer.decreaseIndent();
-    printer.printLine("}");
-    printer.printLine("");
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("}");
+    tPrinter.printLine("");
 
-    if (!printer.stackIsEmpty()) {
-      printer.printStackContent();
-      printer.printLine("}");
-      printer.printLine("");
+    if (!tPrinter.stackIsEmpty()) {
+      tPrinter.printStackContent();
+      tPrinter.printLine("}");
+      tPrinter.printLine("");
     }
   }
 
@@ -1367,19 +1377,19 @@ export function emitWebIdl(
 
   function emitNamespace(namespace: Browser.Interface) {
     if (namespace.comment) {
-      printer.printLine(`/** ${namespace.comment} */`);
+      tPrinter.printLine(`/** ${namespace.comment} */`);
     }
 
     if (namespacesAsInterfaces.includes(namespace.name)) {
       const name = namespace.name[0].toUpperCase() + namespace.name.slice(1);
       emitInterface({ ...namespace, name });
-      printer.printLine(`declare var ${namespace.name}: ${name};`);
-      printer.printLine("");
+      tPrinter.printLine(`declare var ${namespace.name}: ${name};`);
+      tPrinter.printLine("");
       return;
     }
 
-    printer.printLine(`declare namespace ${namespace.name} {`);
-    printer.increaseIndent();
+    tPrinter.printLine(`declare namespace ${namespace.name} {`);
+    tPrinter.increaseIndent();
 
     if (namespace.nested) {
       namespace.nested.interfaces.sort(compareName).forEach((i) => {
@@ -1394,44 +1404,44 @@ export function emitWebIdl(
     emitProperties("var ", EmitScope.InstanceOnly, namespace);
     emitMethods("function ", EmitScope.InstanceOnly, namespace, new Set());
 
-    printer.decreaseIndent();
-    printer.printLine("}");
-    printer.printLine("");
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("}");
+    tPrinter.printLine("");
   }
 
   function emitDictionary(dict: Browser.Dictionary) {
     if (!dict.extends || dict.extends === "Object") {
-      printer.printLine(
+      tPrinter.printLine(
         `interface ${getNameWithTypeParameter(
           dict.typeParameters,
           dict.name
         )} {`
       );
     } else {
-      printer.printLine(
+      tPrinter.printLine(
         `interface ${getNameWithTypeParameter(
           dict.typeParameters,
           dict.name
         )} extends ${dict.extends} {`
       );
     }
-    printer.increaseIndent();
+    tPrinter.increaseIndent();
     if (dict.members) {
       mapToArray(dict.members.member)
         .sort(compareName)
         .forEach((m) => {
-          emitComments(m, printer.printLine);
-          printer.printLine(
+          emitComments(m, tPrinter.printLine);
+          tPrinter.printLine(
             `${m.name}${m.required ? "" : "?"}: ${convertDomTypeToTsType(m)};`
           );
         });
     }
     if (dict.overrideIndexSignatures) {
-      dict.overrideIndexSignatures!.forEach((s) => printer.printLine(`${s};`));
+      dict.overrideIndexSignatures!.forEach((s) => tPrinter.printLine(`${s};`));
     }
-    printer.decreaseIndent();
-    printer.printLine("}");
-    printer.printLine("");
+    tPrinter.decreaseIndent();
+    tPrinter.printLine("}");
+    tPrinter.printLine("");
   }
 
   function emitDictionaries() {
@@ -1442,8 +1452,8 @@ export function emitWebIdl(
   }
 
   function emitTypeDef(typeDef: Browser.TypeDef) {
-    emitComments(typeDef, printer.printLine);
-    printer.printLine(
+    emitComments(typeDef, tPrinter.printLine);
+    tPrinter.printLine(
       `type ${getNameWithTypeParameter(
         typeDef.typeParameters,
         typeDef.name
@@ -1465,11 +1475,11 @@ export function emitWebIdl(
   }
 
   function emit() {
-    printer.reset();
-    printer.printLine("/////////////////////////////");
-    printer.printLine(`/// ${global} APIs`);
-    printer.printLine("/////////////////////////////");
-    printer.printLine("");
+    tPrinter.reset();
+    tPrinter.printLine("/////////////////////////////");
+    tPrinter.printLine(`/// ${global} APIs`);
+    tPrinter.printLine("/////////////////////////////");
+    tPrinter.printLine("");
 
     emitDictionaries();
     getElements(webidl.callbackInterfaces, "interface")
@@ -1497,7 +1507,7 @@ export function emitWebIdl(
     emitTypeDefs();
     emitEnums();
 
-    return printer.getResult();
+    return tPrinter.getResult();
   }
 
   function emitIterator(i: Browser.Interface) {
@@ -1573,8 +1583,8 @@ export function emitWebIdl(
       const comments = i.iterator?.comments?.comment;
 
       methods.forEach((m) => {
-        emitComments({ comment: comments?.[m.name] }, printer.printLine);
-        printer.printLine(`${m.name}(): ${m.definition};`);
+        emitComments({ comment: comments?.[m.name] }, tPrinter.printLine);
+        tPrinter.printLine(`${m.name}(): ${m.definition};`);
       });
     }
 
@@ -1663,14 +1673,14 @@ export function emitWebIdl(
         i.typeParameters,
         extendConflictsBaseTypes[i.name] ? `${i.name}Base` : i.name
       );
-      printer.printLine("");
-      printer.printLine(`interface ${name} ${iteratorExtends}{`);
-      printer.increaseIndent();
+      tPrinter.printLine("");
+      tPrinter.printLine(`interface ${name} ${iteratorExtends}{`);
+      tPrinter.increaseIndent();
 
       methodsWithSequence.forEach((m) => emitMethod("", m, new Set()));
 
       if (subtypes && !iteratorExtends) {
-        printer.printLine(
+        tPrinter.printLine(
           `[Symbol.iterator](): IterableIterator<${stringifySingleOrTupleTypes(
             subtypes
           )}>;`
@@ -1679,19 +1689,19 @@ export function emitWebIdl(
       if (i.iterator?.kind === "iterable" && subtypes) {
         emitIterableDeclarationMethods(i, subtypes);
       }
-      printer.decreaseIndent();
-      printer.printLine("}");
+      tPrinter.decreaseIndent();
+      tPrinter.printLine("}");
     }
   }
 
   function emitES6DomIterators() {
-    printer.reset();
-    printer.printLine("/////////////////////////////");
-    printer.printLine(`/// ${global} Iterable APIs`);
-    printer.printLine("/////////////////////////////");
+    tPrinter.reset();
+    tPrinter.printLine("/////////////////////////////");
+    tPrinter.printLine(`/// ${global} Iterable APIs`);
+    tPrinter.printLine("/////////////////////////////");
 
     allInterfaces.sort(compareName).forEach(emitIterator);
 
-    return printer.getResult();
+    return tPrinter.getResult();
   }
 }
