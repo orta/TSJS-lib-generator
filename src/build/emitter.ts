@@ -796,7 +796,8 @@ export function emitWebIdl(
     prefix: string,
     i: Browser.Interface,
     emitScope: EmitScope,
-    p: Browser.Property
+    p: Browser.Property,
+    printer: Printer
   ) {
     emitComments(p, tPrinter.printLine);
 
@@ -808,8 +809,8 @@ export function emitWebIdl(
       i.name === "Window" &&
       emitScope === EmitScope.All
     ) {
-      tPrinter.printLine("/** @deprecated */");
-      tPrinter.printLine("declare const name: void;");
+      printer.printLine("/** @deprecated */");
+      printer.printLine("declare const name: void;");
     } else {
       let pType: string;
       if (!p.overrideType && isEventHandler(p)) {
@@ -831,7 +832,7 @@ export function emitWebIdl(
       }
       const optionalModifier = !p.optional || prefix ? "" : "?";
       if (!prefix && !p.readonly && p.putForwards) {
-        tPrinter.printLine(`get ${p.name}${optionalModifier}(): ${pType};`);
+        printer.printLine(`get ${p.name}${optionalModifier}(): ${pType};`);
 
         const forwardingProperty =
           allInterfacesMap[pType].properties?.property[p.putForwards];
@@ -841,12 +842,12 @@ export function emitWebIdl(
         const setterType = `${convertDomTypeToTsType(
           forwardingProperty
         )} | ${pType}`;
-        tPrinter.printLine(
+        printer.printLine(
           `set ${p.name}${optionalModifier}(${p.putForwards}: ${setterType});`
         );
       } else {
         const readOnlyModifier = p.readonly && prefix === "" ? "readonly " : "";
-        tPrinter.printLine(
+        printer.printLine(
           `${prefix}${readOnlyModifier}${p.name}${optionalModifier}: ${pType};`
         );
       }
@@ -884,27 +885,29 @@ export function emitWebIdl(
   function emitProperties(
     prefix: string,
     emitScope: EmitScope,
-    i: Browser.Interface
+    i: Browser.Interface,
+    printer: Printer
   ) {
     if (i.properties) {
       mapToArray(i.properties.property)
         .filter((m) => matchScope(emitScope, m))
         .filter((p) => !isCovariantEventHandler(i, p))
         .sort(compareName)
-        .forEach((p) => emitProperty(prefix, i, emitScope, p));
+        .forEach((p) => emitProperty(prefix, i, emitScope, p, printer));
     }
   }
 
   function emitMethod(
     prefix: string,
     m: Browser.Method,
-    conflictedMembers: Set<string>
+    conflictedMembers: Set<string>,
+    printer: Printer
   ) {
     function printLine(content: string) {
       if (m.name && conflictedMembers.has(m.name)) {
-        tPrinter.printLineToStack(content);
+        printer.printLineToStack(content);
       } else {
-        tPrinter.printLine(content);
+        printer.printLine(content);
       }
     }
 
@@ -974,7 +977,8 @@ export function emitWebIdl(
     prefix: string,
     emitScope: EmitScope,
     i: Browser.Interface,
-    conflictedMembers: Set<string>
+    conflictedMembers: Set<string>,
+    printer: Printer
   ) {
     // If prefix is not empty, then this is the global declare function addEventListener, we want to override this
     // Otherwise, this is EventTarget.addEventListener, we want to keep that.
@@ -1001,12 +1005,12 @@ export function emitWebIdl(
           }
         })
         .sort(compareName)
-        .forEach((m) => emitMethod(prefix, m, conflictedMembers));
+        .forEach((m) => emitMethod(prefix, m, conflictedMembers, printer));
     }
     if (i.anonymousMethods) {
       const stringifier = i.anonymousMethods.method.find((m) => m.stringifier);
       if (stringifier) {
-        tPrinter.printLine("toString(): string;");
+        printer.printLine("toString(): string;");
       }
     }
 
@@ -1018,7 +1022,7 @@ export function emitWebIdl(
   }
 
   // Emit forEach for iterators
-  function emitIteratorForEach(i: Browser.Interface) {
+  function emitIteratorForEach(i: Browser.Interface, printer: Printer) {
     if (!i.iterator) {
       return;
     }
@@ -1033,7 +1037,7 @@ export function emitWebIdl(
     const name = i.typeParameters
       ? `${i.name}<${i.typeParameters!.map((p) => p.name).join(", ")}>`
       : i.name;
-    tPrinter.printLine(
+    printer.printLine(
       `forEach(callbackfn: (value: ${value}, key: ${key}, parent: ${name}) => void, thisArg?: any): void;`
     );
   }
@@ -1042,30 +1046,31 @@ export function emitWebIdl(
   function emitMembers(
     prefix: string,
     emitScope: EmitScope,
-    i: Browser.Interface
+    i: Browser.Interface,
+    printer: Printer
   ) {
     const conflictedMembers = extendConflictsBaseTypes[i.name]
       ? extendConflictsBaseTypes[i.name].memberNames
       : new Set<string>();
-    emitProperties(prefix, emitScope, i);
+    emitProperties(prefix, emitScope, i, printer);
     const methodPrefix = prefix.startsWith("declare var")
       ? "declare function "
       : "";
-    emitMethods(methodPrefix, emitScope, i, conflictedMembers);
+    emitMethods(methodPrefix, emitScope, i, conflictedMembers, printer);
     if (emitScope === EmitScope.InstanceOnly) {
-      emitIteratorForEach(i);
+      emitIteratorForEach(i, printer);
     }
   }
 
   /// Emit all members of every interfaces at the root level.
   /// Called only once on the global polluter object
-  function emitAllMembers(i: Browser.Interface) {
-    emitMembers(/*prefix*/ "declare var ", EmitScope.All, i);
+  function emitAllMembers(i: Browser.Interface, printer: Printer) {
+    emitMembers(/*prefix*/ "declare var ", EmitScope.All, i, printer);
 
     for (const relatedIName of iNameToIDependList[i.name]) {
       const i = allInterfacesMap[relatedIName];
       if (i) {
-        emitAllMembers(i);
+        emitAllMembers(i, printer);
       }
     }
   }
@@ -1161,7 +1166,7 @@ export function emitWebIdl(
         emitConstants(parent, vPrinter);
       }
     }
-    emitMembers(/*prefix*/ "", EmitScope.StaticOnly, i);
+    emitMembers(/*prefix*/ "", EmitScope.StaticOnly, i, vPrinter);
 
     vPrinter.decreaseIndent();
     vPrinter.printLine("};");
@@ -1361,7 +1366,7 @@ export function emitWebIdl(
     emitInterfaceDeclaration(i);
     tPrinter.increaseIndent();
 
-    emitMembers(/*prefix*/ "", EmitScope.InstanceOnly, i);
+    emitMembers(/*prefix*/ "", EmitScope.InstanceOnly, i, tPrinter);
     emitConstants(i, tPrinter);
     emitEventHandlers(/*prefix*/ "", i, tPrinter);
     emitIndexers(EmitScope.InstanceOnly, i);
@@ -1416,8 +1421,14 @@ export function emitWebIdl(
       namespace.nested.typedefs.sort(compareName).forEach(emitTypeDef);
     }
 
-    emitProperties("var ", EmitScope.InstanceOnly, namespace);
-    emitMethods("function ", EmitScope.InstanceOnly, namespace, new Set());
+    emitProperties("var ", EmitScope.InstanceOnly, namespace, tPrinter);
+    emitMethods(
+      "function ",
+      EmitScope.InstanceOnly,
+      namespace,
+      new Set(),
+      tPrinter
+    );
 
     tPrinter.decreaseIndent();
     tPrinter.printLine("}");
@@ -1515,7 +1526,7 @@ export function emitWebIdl(
     }
 
     if (polluter) {
-      emitAllMembers(polluter);
+      emitAllMembers(polluter, vPrinter);
       emitEventHandlers("declare var ", polluter, vPrinter);
     }
 
@@ -1692,7 +1703,9 @@ export function emitWebIdl(
       tPrinter.printLine(`interface ${name} ${iteratorExtends}{`);
       tPrinter.increaseIndent();
 
-      methodsWithSequence.forEach((m) => emitMethod("", m, new Set()));
+      methodsWithSequence.forEach((m) =>
+        emitMethod("", m, new Set(), tPrinter)
+      );
 
       if (subtypes && !iteratorExtends) {
         tPrinter.printLine(

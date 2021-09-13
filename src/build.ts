@@ -259,6 +259,12 @@ async function emitDom() {
     outputFolder,
     splitTypes: true,
   });
+  await fs.writeFile(
+    new URL("dom.generated.d.ts", outputFolder),
+    `/// <reference types="./dom.generated.types.d.ts">
+/// <reference types="./dom.generated.globals.d.ts">`
+  );
+
   emitFlavor(webidl, new Set(knownTypes.Worker), {
     name: "webworker",
     global: ["Worker", "DedicatedWorker", "SharedWorker", "ServiceWorker"],

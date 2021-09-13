@@ -4,6 +4,7 @@ module.exports = {
     node: true,
     browser: true,
   },
+  ignorePatterns: ["generated"],
   parser: "@typescript-eslint/parser",
   plugins: ["@typescript-eslint"],
   extends: [
