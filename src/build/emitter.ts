@@ -54,6 +54,7 @@ function getElements<K extends string, T>(
   return a ? mapToArray(a[k]) : [];
 }
 
+type Printer = ReturnType<typeof createTextWriter>;
 function createTextWriter(newLine: string) {
   let output: string;
   let indent: number;
@@ -128,9 +129,7 @@ function createTextWriter(newLine: string) {
   };
 }
 
-function createNOOPTextWriter(
-  newLine: string
-): ReturnType<typeof createTextWriter> {
+function createNOOPTextWriter(newLine: string): Printer {
   const realWriter = createTextWriter(newLine);
   realWriter.getResult = function () {
     return "";
@@ -150,7 +149,17 @@ export function emitWebIdl(
 ): string {
   emitObjects;
   // Global print target
-  const tPrinter = createTextWriter("\n");
+  const tPrinter =
+    emitObjects === "all" || emitObjects === "types"
+      ? createTextWriter("\n")
+      : createNOOPTextWriter("\n");
+
+  const vPrinter =
+    emitObjects === "all"
+      ? tPrinter // re-use the same one for all
+      : emitObjects === "values"
+      ? createTextWriter("\n") // create a new one if we're just showing values
+      : createNOOPTextWriter("\n");
 
   const polluter = getElements(webidl.interfaces, "interface").find(
     (i) => !!i.global
@@ -455,14 +464,16 @@ export function emitWebIdl(
     return `${i.name}<${typeParameters.map((t) => t.name)}>`;
   }
 
-  function emitConstant(c: Browser.Constant) {
-    emitComments(c, tPrinter.printLine);
-    tPrinter.printLine(`readonly ${c.name}: ${convertDomTypeToTsType(c)};`);
+  function emitConstant(c: Browser.Constant, printer: Printer) {
+    emitComments(c, printer.printLine);
+    printer.printLine(`readonly ${c.name}: ${convertDomTypeToTsType(c)};`);
   }
 
-  function emitConstants(i: Browser.Interface) {
+  function emitConstants(i: Browser.Interface, printer: Printer) {
     if (i.constants) {
-      mapToArray(i.constants.constant).sort(compareName).forEach(emitConstant);
+      mapToArray(i.constants.constant)
+        .sort(compareName)
+        .forEach((c) => emitConstant(c, printer));
     }
   }
 
@@ -722,12 +733,12 @@ export function emitWebIdl(
       return;
     }
 
-    tPrinter.printLine(`declare var ${i.name}: {`);
-    tPrinter.increaseIndent();
-    emitConstants(i);
-    tPrinter.decreaseIndent();
-    tPrinter.printLine("};");
-    tPrinter.printLine("");
+    vPrinter.printLine(`declare var ${i.name}: {`);
+    vPrinter.increaseIndent();
+    emitConstants(i, vPrinter);
+    vPrinter.decreaseIndent();
+    vPrinter.printLine("};");
+    vPrinter.printLine("");
   }
 
   function emitCallBackFunction(cb: Browser.CallbackFunction) {
@@ -1059,7 +1070,11 @@ export function emitWebIdl(
     }
   }
 
-  function emitEventHandlers(prefix: string, i: Browser.Interface) {
+  function emitEventHandlers(
+    prefix: string,
+    i: Browser.Interface,
+    printer: Printer
+  ) {
     const fPrefix = prefix.startsWith("declare var") ? "declare function " : "";
 
     for (const addOrRemove of ["add", "remove"]) {
@@ -1069,7 +1084,7 @@ export function emitWebIdl(
           : "EventListenerOptions";
       if (tryEmitTypedEventHandlerForInterface(addOrRemove, optionsType)) {
         // only emit the string event handler if we just emitted a typed handler
-        tPrinter.printLine(
+        printer.printLine(
           `${fPrefix}${addOrRemove}EventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | ${optionsType}): void;`
         );
       }
@@ -1115,47 +1130,47 @@ export function emitWebIdl(
     }
   }
 
-  function emitConstructorSignature(i: Browser.Interface) {
+  function emitConstructorSignature(i: Browser.Interface, printer: Printer) {
     const constructor =
       typeof i.constructor === "object" ? i.constructor : undefined;
 
     // Emit constructor signature
     if (constructor) {
-      emitComments(constructor, tPrinter.print);
-      emitSignatures(constructor, "", "new", tPrinter.printLine);
+      emitComments(constructor, printer.print);
+      emitSignatures(constructor, "", "new", printer.printLine);
     } else {
-      tPrinter.printLine(`new(): ${i.name};`);
+      printer.printLine(`new(): ${i.name};`);
     }
   }
 
   function emitConstructor(i: Browser.Interface, prefix = "") {
     if (i.deprecated) {
-      tPrinter.printLine(`/** @deprecated */`);
+      vPrinter.printLine(`/** @deprecated */`);
     }
-    tPrinter.printLine(`${prefix}var ${i.name}: {`);
-    tPrinter.increaseIndent();
+    vPrinter.printLine(`${prefix}var ${i.name}: {`);
+    vPrinter.increaseIndent();
 
     // TODO: To be more accurate, this should be `readonly prototype`
     // however, TypeScript's ability to keep track of readonly-ness can
     // sometimes fail in un-expected ways, making this not backwards compatible.
-    tPrinter.printLine(`prototype: ${i.name};`);
-    emitConstructorSignature(i);
-    emitConstants(i);
+    vPrinter.printLine(`prototype: ${i.name};`);
+    emitConstructorSignature(i, vPrinter);
+    emitConstants(i, vPrinter);
     if (iNameToConstParents[i.name]?.length) {
       for (const parent of iNameToConstParents[i.name]) {
-        emitConstants(parent);
+        emitConstants(parent, vPrinter);
       }
     }
     emitMembers(/*prefix*/ "", EmitScope.StaticOnly, i);
 
-    tPrinter.decreaseIndent();
-    tPrinter.printLine("};");
-    tPrinter.printLine("");
+    vPrinter.decreaseIndent();
+    vPrinter.printLine("};");
+    vPrinter.printLine("");
 
     if (global === "Window" && i.legacyWindowAlias) {
       for (const alias of i.legacyWindowAlias!) {
         tPrinter.printLine(`type ${alias} = ${i.name};`);
-        tPrinter.printLine(`declare var ${alias}: typeof ${i.name};`);
+        vPrinter.printLine(`declare var ${alias}: typeof ${i.name};`);
         tPrinter.printLine("");
       }
     }
@@ -1164,15 +1179,15 @@ export function emitWebIdl(
   function emitNamedConstructor(i: Browser.Interface) {
     const nc = i.namedConstructor;
     if (nc) {
-      tPrinter.printLine(`declare var ${nc.name}: {`);
-      tPrinter.increaseIndent();
+      vPrinter.printLine(`declare var ${nc.name}: {`);
+      vPrinter.increaseIndent();
       nc.signature.forEach((s) =>
-        tPrinter.printLine(
+        vPrinter.printLine(
           `new(${s.param ? paramsToString(s.param) : ""}): ${i.name};`
         )
       );
-      tPrinter.decreaseIndent();
-      tPrinter.printLine(`};`);
+      vPrinter.decreaseIndent();
+      vPrinter.printLine(`};`);
     }
   }
 
@@ -1347,8 +1362,8 @@ export function emitWebIdl(
     tPrinter.increaseIndent();
 
     emitMembers(/*prefix*/ "", EmitScope.InstanceOnly, i);
-    emitConstants(i);
-    emitEventHandlers(/*prefix*/ "", i);
+    emitConstants(i, tPrinter);
+    emitEventHandlers(/*prefix*/ "", i, tPrinter);
     emitIndexers(EmitScope.InstanceOnly, i);
 
     tPrinter.decreaseIndent();
@@ -1501,13 +1516,13 @@ export function emitWebIdl(
 
     if (polluter) {
       emitAllMembers(polluter);
-      emitEventHandlers("declare var ", polluter);
+      emitEventHandlers("declare var ", polluter, vPrinter);
     }
 
     emitTypeDefs();
     emitEnums();
 
-    return tPrinter.getResult();
+    return tPrinter.getResult().trim() || vPrinter.getResult();
   }
 
   function emitIterator(i: Browser.Interface) {
